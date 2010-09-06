@@ -1014,7 +1014,7 @@ class BitNlpg extends LibertyContent {
 
 		$where = ' WHERE ';
 		if( isset( $find_org ) and is_string( $find_org ) and $find_org <> '' ) {
-			$findSql .= $where . "UPPER( p.`organisation` ) like ? ";
+			$findSql .= $where . "UPPER( c.`organisation` ) like ? ";
 			$bindVars[] = '%' . strtoupper( $find_org ). '%';
 			$where = ' AND ';
 		}
@@ -1025,7 +1025,7 @@ class BitNlpg extends LibertyContent {
 			$where = ' AND ';
 		}
 		if( isset( $find_street ) and is_string( $find_street ) and $find_street <> '' ) {
-			$findSql .= $where . "UPPER( s.`street_descriptor` ) like ? ";
+			$findSql .= $where . "UPPER( d.`add2` ) like ? ";
 			$bindVars[] = '%' . strtoupper( $find_street ). '%';
 			$where = ' AND ';
 		}
@@ -1036,19 +1036,19 @@ class BitNlpg extends LibertyContent {
 		}
 		// If no selected filter then reduce result set artificially - use street starting A
 		if( $where == ' WHERE ' ) {
-			$findSql .= $where . "UPPER( s.`street_descriptor` ) like ? ";
+			$findSql .= $where . "UPPER( d.`add2` ) like ? ";
 			$bindVars[] = 'A%';
 			$pParamHash['find_street'] = 'A';
 		}
-		$query = "SELECT p.*, d.sao, d.pao AS title, d.postcode, s.* $selectSql 
-			FROM `".BIT_DB_PREFIX."nlpg_blpu` p 
-			INNER JOIN `".BIT_DB_PREFIX."nlpg_lpi` d ON d.uprn = p.uprn AND d.language = 'ENG' AND d.logical_status = 1 
-			INNER JOIN `".BIT_DB_PREFIX."nlpg_street_descriptor` s ON s.usrn = d.usrn AND s.language = 'ENG' $findSql 
+		$query = "SELECT CASE WHEN c.uprn = 0 THEN 'Private' ELSE 'Business' END AS p_type, p.*, d.add2, d.add3 AS title, d.postcode, c.* $selectSql 
+			FROM `".BIT_DB_PREFIX."property` p 
+			INNER JOIN `".BIT_DB_PREFIX."postcode` d ON d.`postcode` = p.`postcode` 
+			INNER JOIN `".BIT_DB_PREFIX."contact` c ON c.`content_id` = p.`owner_id` $findSql 
 			$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 		$query_cant = "SELECT COUNT( * )
-			FROM `".BIT_DB_PREFIX."nlpg_blpu` p
-			INNER JOIN `".BIT_DB_PREFIX."nlpg_lpi` d ON p.uprn = d.uprn AND d.language = 'ENG' AND d.logical_status = 1  
-			INNER JOIN `".BIT_DB_PREFIX."nlpg_street_descriptor` s ON s.usrn = d.usrn AND s.language = 'ENG' $findSql 
+			FROM `".BIT_DB_PREFIX."property` p
+			INNER JOIN `".BIT_DB_PREFIX."postcode` d ON d.`postcode` = p.`postcode` 
+			INNER JOIN `".BIT_DB_PREFIX."contact` c ON c.`content_id` = p.`owner_id` $findSql 
 			$joinSql $whereSql";
 		$result = $this->mDb->query( $query, $bindVars, $max_records, $offset );
 		$ret = array();
@@ -1056,12 +1056,13 @@ class BitNlpg extends LibertyContent {
 			if (!empty($parse_split)) {
 				$res = array_merge($this->parseSplit($res), $res);
 			}
-			$os1 = new OSRef($res['x_coordinate'], $res['y_coordinate']);
+/*			$os1 = new OSRef($res['x_coordinate'], $res['y_coordinate']);
 			$ll1 = $os1->toLatLng();
 			$res['prop_lat'] = $ll1->lat;
 			$res['prop_lng'] = $ll1->lng;
 			$res['display_usrn'] = $this->getUsrnEntryUrl( $res['usrn'] );
 			$res['display_uprn'] = $this->getUprnEntryUrl( $res['uprn'] );
+*/
 			$ret[] = $res;
 		}
 

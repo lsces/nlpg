@@ -31,6 +31,7 @@
 				<thead>
 					<tr>
 						<th>{smartlink ititle="UPRN" isort=uprn idefault=1 iorder=desc icontrol=$listInfo list=property}</th>
+						<th>Property Type</th>
 						<th>{smartlink ititle="Organisation" isort=organisation icontrol=$listInfo list=property}</th>
 						<th>{smartlink ititle="Sec. Title" isort=soa icontrol=$listInfo list=property}</th>
 						<th>{smartlink ititle="Title" isort=title icontrol=$listInfo list=property}</th>
@@ -45,9 +46,12 @@
 					{section name=county loop=$list}
 						<tr class="{cycle values="even,odd"}" title="{$list[county].title|escape}">
 							<td>
-								<a href="display_property.php?uprn={$list[county].uprn}" title="uprn_{$list[county].uprn}">
-									{$list[county].uprn}
+								<a href="display_property.php?uprn={$list[county].property_id}" title="uprn_{$list[county].property_id}">
+									{$list[county].property_id}
 								</a>
+							</td>
+							<td>
+								{$list[county].p_type}
 							</td>
 							<td>
 								{$list[county].organisation}
