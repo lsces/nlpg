@@ -64,7 +64,7 @@ class BitNlpg extends LibertyContent {
 	* Load the data from the database
 	* @param pParamHash be sure to pass by reference in case we need to make modifcations to the hash
 	**/
-	function load() {
+	function load( $pContentId = NULL, $pPluginParams = NULL ) {
 		global $gBitSystem;
 		if( $this->verifyId( $this->mEventsId ) || $this->verifyId( $this->mContentId ) ) {
 			// LibertyContent::load()assumes you have joined already, and will not execute any sql!
@@ -92,7 +92,7 @@ class BitNlpg extends LibertyContent {
 
 				$this->mInfo['creator'] =( isset( $result->fields['creator_real_name'] )? $result->fields['creator_real_name'] : $result->fields['creator_user'] );
 				$this->mInfo['editor'] =( isset( $result->fields['modifier_real_name'] )? $result->fields['modifier_real_name'] : $result->fields['modifier_user'] );
-				$this->mInfo['display_url'] = $this->getDisplayUrl();
+				$this->mInfo['display_url'] = $this->getContentUrl();
 				$this->mInfo['parsed_data'] = $this->parseData( $this->mInfo['data'], $this->mInfo['format_guid'] );
 
 				$prefChecks = array('show_start_time', 'show_end_time');
@@ -439,24 +439,25 @@ class BitNlpg extends LibertyContent {
 	}
 
 	/**
-	* Generates the URL to the events page
+	* Generates the URL to an nlpg link
 	* @param pExistsHash the hash that was returned by LibertyContent::pageExists
 	* @return the link to display the page.
 	*/
-	function getDisplayUrl( $pEventsId = NULL, $pParamHash = NULL ) {
-		$ret = NULL;
+	public static function getDisplayUrl( $pNlpgId = NULL, $pParamHash = NULL ) {
+		return LibertyContent::getDisplayUrl( $pNlpgId, $pParamHash );;
+	}
+
+	function getContentUrl( $pNlpgId = NULL ) {
 		if( @$this->verifyId( $this->mUSRN ) ) {
-			$ret = NLPG_PKG_URL."index.php?usrn=".$this->mUSRN;
+			return NLPG_PKG_URL."index.php?usrn=".$this->mUSRN;
 		} else if ( @$this->verifyId( $this->mUPRN ) ) {
-			$ret = NLPG_PKG_URL."index.php?uprn=".$this->mUPRN;
-		} else {
-			$ret = LibertyContent::getDisplayUrl( NULL, $pParamHash );
+			return NLPG_PKG_URL."index.php?uprn=".$this->mUPRN;
 		}
-		return $ret;
+		return self::getDisplayUrl( $pNlpgId );
 	}
 
 	/* Limits content status types for users who can not enter all status */
-	function getAvailableContentStatuses() {
+	function getAvailableContentStatuses( $pUserMinimum=-100, $pUserMaximum=100 ) {
 		global $gBitSystem;
 		if ($gBitSystem->isFeatureActive('events_moderation')) {
 			return LibertyContent::getAvailableContentStatuses(-100,0);
@@ -900,54 +901,54 @@ class BitNlpg extends LibertyContent {
 			$whereSql .= " AND lc.`creator_user_id` = ? ";
 			$bindVars[] = array( $pUserId );
 		}
-*/		
+*/
 		if ( $pParamHash['list'] == 'county' ) {
-			$query = "SELECT c.* $selectSql 
+			$query = "SELECT c.* $selectSql
 				FROM `".BIT_DB_PREFIX."nlpg_ons_county` c
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_ons_county` c $joinSql $whereSql";
 		} else if ( $pParamHash['list'] == 'local' ) {
-			$query = "SELECT l.*, c.title AS county $selectSql 
-				FROM `".BIT_DB_PREFIX."nlpg_ons_local_authority` l 
+			$query = "SELECT l.*, c.title AS county $selectSql
+				FROM `".BIT_DB_PREFIX."nlpg_ons_local_authority` l
 				LEFT JOIN `".BIT_DB_PREFIX."nlpg_ons_county` c ON l.c_id = c.c_id AND l.c_id > 0
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_ons_local_authority` l $joinSql $whereSql";
 		} else if ( $pParamHash['list'] == 'ward' ) {
-			$query = "SELECT w.*, l.title AS local_authority, c.title AS county $selectSql 
-				FROM `".BIT_DB_PREFIX."nlpg_ons_ward` w 
+			$query = "SELECT w.*, l.title AS local_authority, c.title AS county $selectSql
+				FROM `".BIT_DB_PREFIX."nlpg_ons_ward` w
 				INNER JOIN `".BIT_DB_PREFIX."nlpg_ons_local_authority` l ON w.l_id = l.l_id
 				LEFT JOIN `".BIT_DB_PREFIX."nlpg_ons_county` c ON l.c_id = c.c_id AND l.c_id > 0
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_ons_ward` w $joinSql $whereSql";
 		} else if ( $pParamHash['list'] == 'parish' ) {
-			$query = "SELECT p.*, l.title AS local_authority, c.title AS county $selectSql 
-				FROM `".BIT_DB_PREFIX."nlpg_ons_parish` p 
+			$query = "SELECT p.*, l.title AS local_authority, c.title AS county $selectSql
+				FROM `".BIT_DB_PREFIX."nlpg_ons_parish` p
 				INNER JOIN `".BIT_DB_PREFIX."nlpg_ons_local_authority` l ON p.l_id = l.l_id
 				LEFT JOIN `".BIT_DB_PREFIX."nlpg_ons_county` c ON l.c_id = c.c_id AND l.c_id > 0
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_ons_parish` p $joinSql $whereSql";
 		} else if ( $pParamHash['list'] == 'blpu_class' ) {
-			$query = "SELECT c.blpu_id, c.pd, c.sd, c.td AS title $selectSql 
-				FROM `".BIT_DB_PREFIX."nlpg_blpu_class` c 
+			$query = "SELECT c.blpu_id, c.pd, c.sd, c.td AS title $selectSql
+				FROM `".BIT_DB_PREFIX."nlpg_blpu_class` c
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_blpu_class` c $joinSql $whereSql";
 		} else if ( $pParamHash['list'] == 'street' ) {
-			$query = "SELECT s.*, d.street_descriptor AS title, d.locality_name, d.town_name $selectSql 
-				FROM `".BIT_DB_PREFIX."nlpg_street` s 
-				INNER JOIN `".BIT_DB_PREFIX."nlpg_street_descriptor` d ON s.usrn = d.usrn AND d.language = 'ENG' $findSql 
+			$query = "SELECT s.*, d.street_descriptor AS title, d.locality_name, d.town_name $selectSql
+				FROM `".BIT_DB_PREFIX."nlpg_street` s
+				INNER JOIN `".BIT_DB_PREFIX."nlpg_street_descriptor` d ON s.usrn = d.usrn AND d.language = 'ENG' $findSql
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_street` s
-				INNER JOIN `".BIT_DB_PREFIX."nlpg_street_descriptor` d ON s.usrn = d.usrn AND d.language = 'ENG' $findSql 
+				INNER JOIN `".BIT_DB_PREFIX."nlpg_street_descriptor` d ON s.usrn = d.usrn AND d.language = 'ENG' $findSql
 				$joinSql $whereSql";
 		} else if ( $pParamHash['list'] == 'postcode' ) {
-			$query = "SELECT p.postcode, p.add1, p.add2 AS title, p.add3, p.add4, p.town, p.county, p.grideast, p.gridnorth $selectSql 
-				FROM `".BIT_DB_PREFIX."nlpg_postcode` p 
+			$query = "SELECT p.postcode, p.add1, p.add2 AS title, p.add3, p.add4, p.town, p.county, p.grideast, p.gridnorth $selectSql
+				FROM `".BIT_DB_PREFIX."nlpg_postcode` p
 				$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 			$query_cant = "SELECT COUNT( * )
 				FROM `".BIT_DB_PREFIX."nlpg_postcode` p $joinSql $whereSql";
@@ -1040,10 +1041,10 @@ class BitNlpg extends LibertyContent {
 			$bindVars[] = 'A%';
 			$pParamHash['find_street'] = 'A';
 		}
-		$query = "SELECT CASE WHEN c.uprn = 0 THEN 'Private' ELSE 'Business' END AS p_type, p.*, d.add2, d.add3 AS title, d.postcode, c.* $selectSql 
-			FROM `".BIT_DB_PREFIX."property` p 
-			INNER JOIN `".BIT_DB_PREFIX."postcode` d ON d.`postcode` = p.`postcode` 
-			INNER JOIN `".BIT_DB_PREFIX."contact` c ON c.`content_id` = p.`owner_id` $findSql 
+		$query = "SELECT CASE WHEN c.uprn = 0 THEN 'Private' ELSE 'Business' END AS p_type, p.*, d.add2, d.add3 AS title, d.postcode, c.* $selectSql
+			FROM `".BIT_DB_PREFIX."property` p
+			INNER JOIN `".BIT_DB_PREFIX."postcode` d ON d.`postcode` = p.`postcode`
+			INNER JOIN `".BIT_DB_PREFIX."contact` c ON c.`content_id` = p.`owner_id` $findSql
 			$joinSql $whereSql ORDER BY ".$this->mDb->convertSortmode( $sort_mode );
 		$query_cant = "SELECT COUNT( * )
 			FROM `".BIT_DB_PREFIX."property` p
